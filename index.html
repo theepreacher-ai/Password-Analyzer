@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Password Strength Analyzer</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body {
+      font-family: 'Times New Roman', Times, serif;
+      background: linear-gradient(135deg, #020617 0%, #0f172a 100%);
+      color: #e5e7eb;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 600px;
+      width: 100%;
+      background: rgba(17, 24, 39, 0.95);
+      padding: 2.5rem;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+      color: #22c55e;
+    }
+
+    .subtitle {
+      color: #9ca3af;
+      margin-bottom: 2rem;
+      font-size: 0.95rem;
+    }
+
+    .input-group {
+      position: relative;
+      margin-bottom: 1.5rem;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 14px 50px 14px 16px;
+      background: #0b1220;
+      border: 2px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      color: #e5e7eb;
+      font-size: 1rem;
+      font-family: 'Courier New', monospace;
+      transition: all 0.3s ease;
+    }
+
+    input[type="text"]:focus {
+      outline: none;
+      border-color: #22c55e;
+      box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+    }
+
+    .toggle-btn {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: #9ca3af;
+      cursor: pointer;
+      padding: 8px;
+      font-size: 1.2rem;
+    }
+
+    .toggle-btn:hover {
+      color: #e5e7eb;
+    }
+
+    .strength-meter {
+      height: 8px;
+      background: #0b1220;
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 1rem;
+    }
+
+    .strength-fill {
+      height: 100%;
+      width: 0%;
+      transition: all 0.4s ease;
+      border-radius: 10px;
+    }
+
+    .strength-weak { background: #ef4444; width: 25%; }
+    .strength-fair { background: #f59e0b; width: 50%; }
+    .strength-good { background: #3b82f6; width: 75%; }
+    .strength-strong { background: #22c55e; width: 100%; }
+
+    .strength-label {
+      text-align: center;
+      font-weight: 700;
+      font-size: 1.1rem;
+      margin-bottom: 1.5rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .stat-card {
+      background: #0b1220;
+      padding: 1rem;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .stat-label {
+      color: #9ca3af;
+      font-size: 0.85rem;
+      margin-bottom: 0.3rem;
+    }
+
+    .stat-value {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #22c55e;
+    }
+
+    .feedback {
+      background: #0b1220;
+      padding: 1.2rem;
+      border-radius: 10px;
+      border-left: 4px solid #22c55e;
+    }
+
+    .feedback h3 {
+      font-size: 1rem;
+      margin-bottom: 0.8rem;
+      color: #22c55e;
+    }
+
+    .feedback ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    .feedback li {
+      padding: 0.4rem 0;
+      color: #9ca3af;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+
+    .feedback li::before {
+      content: "→";
+      color: #22c55e;
+      font-weight: 700;
+    }
+
+    .check {
+      color: #22c55e;
+      font-weight: 700;
+    }
+
+    .cross {
+      color: #ef4444;
+      font-weight: 700;
+    }
+
+    .breach-check {
+      margin-top: 1.5rem;
+      padding: 1rem;
+      background: #0b1220;
+      border-radius: 10px;
+      text-align: center;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .breach-check.loading {
+      color: #f59e0b;
+    }
+
+    .breach-check.safe {
+      color: #22c55e;
+      border-color: #22c55e;
+    }
+
+    .breach-check.compromised {
+      color: #ef4444;
+      border-color: #ef4444;
+    }
+
+    @media (max-width: 600px) {
+      .container {
+        padding: 1.5rem;
+      }
+      
+      h1 {
+        font-size: 1.5rem;
+      }
+      
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Password Strength Analyzer</h1>
+    <p class="subtitle">Test your password strength and get instant security feedback</p>
+
+    <div class="input-group">
+      <input type="password" id="password" placeholder="Enter your password..." autocomplete="off">
+      <button class="toggle-btn" id="toggleBtn" aria-label="Toggle password visibility">👁️</button>
+    </div>
+
+    <div class="strength-meter">
+      <div class="strength-fill" id="strengthFill"></div>
+    </div>
+
+    <div class="strength-label" id="strengthLabel">Enter a password</div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Length</div>
+        <div class="stat-value" id="lengthStat">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Crack Time</div>
+        <div class="stat-value" id="crackTime">—</div>
+      </div>
+    </div>
+
+    <div class="feedback">
+      <h3>Security Checklist</h3>
+      <ul id="checklist">
+        <li><span class="cross">✗</span> At least 12 characters</li>
+        <li><span class="cross">✗</span> Contains uppercase letters</li>
+        <li><span class="cross">✗</span> Contains lowercase letters</li>
+        <li><span class="cross">✗</span> Contains numbers</li>
+        <li><span class="cross">✗</span> Contains special characters (!@#$%^&*)</li>
+        <li><span class="cross">✗</span> No common patterns (123, abc, password)</li>
+      </ul>
+    </div>
+
+    <div class="breach-check" id="breachCheck">
+      Enter a password to check against known breaches
+    </div>
+  </div>
+
+  <script>
+    const passwordInput = document.getElementById('password');
+    const toggleBtn = document.getElementById('toggleBtn');
+    const strengthFill = document.getElementById('strengthFill');
+    const strengthLabel = document.getElementById('strengthLabel');
+    const lengthStat = document.getElementById('lengthStat');
+    const crackTime = document.getElementById('crackTime');
+    const breachCheck = document.getElementById('breachCheck');
+
+    const commonPatterns = ['password', '123456', 'qwerty', 'abc123', 'letmein', 'welcome', 'monkey', 'dragon'];
+
+    toggleBtn.addEventListener('click', () => {
+      const type = passwordInput.type === 'password' ? 'text' : 'password';
+      passwordInput.type = type;
+      toggleBtn.textContent = type === 'password' ? '👁️' : '🙈';
+    });
+
+    passwordInput.addEventListener('input', () => {
+      const pwd = passwordInput.value;
+      analyzePassword(pwd);
+    });
+
+    function analyzePassword(pwd) {
+      if (!pwd) {
+        resetUI();
+        return;
+      }
+
+      lengthStat.textContent = pwd.length;
+
+      const checks = {
+        length: pwd.length >= 12,
+        uppercase: /[A-Z]/.test(pwd),
+        lowercase: /[a-z]/.test(pwd),
+        numbers: /[0-9]/.test(pwd),
+        special: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(pwd),
+        noCommon: !commonPatterns.some(pattern => pwd.toLowerCase().includes(pattern))
+      };
+
+      updateChecklist(checks);
+
+      const score = Object.values(checks).filter(Boolean).length;
+      updateStrength(score);
+
+      const entropy = calculateEntropy(pwd);
+      const guessesPerSecond = 1e10;
+      const possibleCombinations = Math.pow(2, entropy);
+      const secondsToCrack = possibleCombinations / guessesPerSecond;
+      crackTime.textContent = formatTime(secondsToCrack);
+
+      checkBreach(pwd);
+    }
+
+    function updateChecklist(checks) {
+      const checklist = document.getElementById('checklist');
+      const items = [
+        { check: checks.length, text: 'At least 12 characters' },
+        { check: checks.uppercase, text: 'Contains uppercase letters' },
+        { check: checks.lowercase, text: 'Contains lowercase letters' },
+        { check: checks.numbers, text: 'Contains numbers' },
+        { check: checks.special, text: 'Contains special characters (!@#$%^&*)' },
+        { check: checks.noCommon, text: 'No common patterns (123, abc, password)' }
+      ];
+
+      checklist.innerHTML = items.map(item => `
+        <li>
+          <span class="${item.check ? 'check' : 'cross'}">${item.check ? '✓' : '✗'}</span>
+          ${item.text}
+        </li>
+      `).join('');
+    }
+
+    function updateStrength(score) {
+      strengthFill.className = 'strength-fill';
+      
+      if (score <= 2) {
+        strengthFill.classList.add('strength-weak');
+        strengthLabel.textContent = 'Weak';
+        strengthLabel.style.color = '#ef4444';
+      } else if (score <= 3) {
+        strengthFill.classList.add('strength-fair');
+        strengthLabel.textContent = 'Fair';
+        strengthLabel.style.color = '#f59e0b';
+      } else if (score <= 4) {
+        strengthFill.classList.add('strength-good');
+        strengthLabel.textContent = 'Good';
+        strengthLabel.style.color = '#3b82f6';
+      } else {
+        strengthFill.classList.add('strength-strong');
+        strengthLabel.textContent = 'Strong';
+        strengthLabel.style.color = '#22c55e';
+      }
+    }
+
+    function calculateEntropy(pwd) {
+      let charsetSize = 0;
+      if (/[a-z]/.test(pwd)) charsetSize += 26;
+      if (/[A-Z]/.test(pwd)) charsetSize += 26;
+      if (/[0-9]/.test(pwd)) charsetSize += 10;
+      if (/[^a-zA-Z0-9]/.test(pwd)) charsetSize += 32;
+      
+      return pwd.length * Math.log2(charsetSize);
+    }
+
+    function formatTime(seconds) {
+      if (seconds < 1) return 'Instant';
+      if (seconds < 60) return `${Math.round(seconds)}s`;
+      if (seconds < 3600) return `${Math.round(seconds / 60)}m`;
+      if (seconds < 86400) return `${Math.round(seconds / 3600)}h`;
+      if (seconds < 31536000) return `${Math.round(seconds / 86400)}d`;
+      if (seconds < 3153600000) return `${Math.round(seconds / 31536000)}y`;
+      return '100+ years';
+    }
+
+    async function checkBreach(pwd) {
+      if (pwd.length < 6) {
+        breachCheck.className = 'breach-check';
+        breachCheck.textContent = 'Password too short to check breaches';
+        return;
+      }
+
+      breachCheck.className = 'breach-check loading';
+      breachCheck.textContent = 'Checking against breach database...';
+
+      try {
+        const encoder = new TextEncoder();
+        const data = encoder.encode(pwd);
+        const hashBuffer = await crypto.subtle.digest('SHA-1', data);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+        
+        const prefix = hashHex.substring(0, 5);
+        const suffix = hashHex.substring(5);
+
+        const response = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`);
+        const text = await response.text();
+        
+        const found = text.split('\n').some(line => line.startsWith(suffix));
+
+        if (found) {
+          breachCheck.className = 'breach-check compromised';
+          breachCheck.textContent = '⚠️ This password has been found in data breaches. Do NOT use it!';
+        } else {
+          breachCheck.className = 'breach-check safe';
+          breachCheck.textContent = '✓ Not found in known breaches';
+        }
+      } catch (error) {
+        breachCheck.className = 'breach-check';
+        breachCheck.textContent = 'Unable to check breaches (network error)';
+      }
+    }
+
+    function resetUI() {
+      strengthFill.className = 'strength-fill';
+      strengthLabel.textContent = 'Enter a password';
+      strengthLabel.style.color = '#9ca3af';
+      lengthStat.textContent = '0';
+      crackTime.textContent = '—';
+      breachCheck.className = 'breach-check';
+      breachCheck.textContent = 'Enter a password to check against known breaches';
+      
+      updateChecklist({
+        length: false,
+        uppercase: false,
+        lowercase: false,
+        numbers: false,
+        special: false,
+        noCommon: false
+      });
+    }
+  </script>
+</body>
+</html>
